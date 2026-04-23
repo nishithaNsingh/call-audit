@@ -2,15 +2,6 @@
 
 Detects failures in voice AI call transcripts and outputs exact prompt fixes to deploy.
 
-## Setup
-
-```bash
-pip install -r requirements.txt
-export ANTHROPIC_API_KEY=your_key_here
-uvicorn main:app --reload
-```
-
-Open http://localhost:8000
 
 ## What it does
 
@@ -24,4 +15,4 @@ Open http://localhost:8000
 
 - **Backend:** Python, FastAPI, Anthropic SDK
 - **Frontend:** Vanilla JS + HTML (served by FastAPI)
-- **AI:** Claude via Anthropic API
+- **AI:** openai/gpt-oss-120b:free
