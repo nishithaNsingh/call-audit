@@ -1,4 +1,4 @@
-# Samora Call Audit — Voice Failure Fixer
+# Call Audit — Voice Failure Fixer
 
 Detects failures in voice AI call transcripts and outputs exact prompt fixes to deploy.
 
