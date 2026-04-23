@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Call Audit</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Times New Roman', Times, serif; background: #ffffff; color: #1a1a1a; min-height: 100vh; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+
+  header {
+    border-bottom: 1px solid #e5e5e5;
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+  }
+  .logo { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: #1a1a1a; }
+  .logo span { color: #5b21b6; }
+  .logo-sub { font-size: 9px; color: #aaa; letter-spacing: 0.18em; margin-top: 3px; font-family: 'DM Mono', monospace; }
+  .version { font-size: 10px; color: #ccc; letter-spacing: 0.1em; font-family: 'DM Mono', monospace; }
+
+  .layout { display: grid; grid-template-columns: 1fr 1fr; height: calc(100vh - 57px); }
+  .panel-left { padding: 28px 32px; border-right: 1px solid #e5e5e5; display: flex; flex-direction: column; gap: 16px; background: #fafafa; }
+  .panel-right { display: none; flex-direction: column; background: #fff; }
+  .panel-right.visible { display: flex; }
+
+  .panel-label { font-size: 9px; color: #aaa; letter-spacing: 0.18em; margin-bottom: 4px; font-family: 'DM Mono', monospace; }
+  .panel-title { font-size: 14px; color: #333; font-style: italic; }
+
+  .top-row { display: flex; align-items: flex-end; justify-content: space-between; }
+  textarea {
+    background: #fff;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    padding: 16px;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 12.5px;
+    line-height: 1.8;
+    resize: vertical;
+    outline: none;
+    flex: 1;
+    transition: border 0.2s;
+  }
+  textarea:focus { border-color: #5b21b6; }
+
+  .btn-sample {
+    background: transparent;
+    color: #888;
+    border: 1px solid #ddd;
+    padding: 7px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
+  .btn-sample:hover { border-color: #5b21b6; color: #5b21b6; }
+
+  .btn-analyze {
+    background: #5b21b6;
+    color: #fff;
+    border: none;
+    padding: 13px 28px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: all 0.15s;
+  }
+  .btn-analyze:hover { background: #4c1d95; }
+  .btn-analyze:disabled { background: #e5e5e5; color: #aaa; cursor: not-allowed; }
+
+  .action-row { display: flex; align-items: center; gap: 16px; }
+  .status { font-size: 10px; color: #aaa; font-family: 'DM Mono', monospace; }
+  .status.error { color: #dc2626; }
+
+  .call-list { border-bottom: 1px solid #e5e5e5; max-height: 210px; overflow-y: auto; }
+  .list-header { padding: 10px 22px; font-size: 9px; color: #bbb; letter-spacing: 0.18em; border-bottom: 1px solid #f0f0f0; font-family: 'DM Mono', monospace; }
+
+  .call-row {
+    padding: 11px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    border-bottom: 1px solid #f5f5f5;
+    border-left: 3px solid transparent;
+    transition: all 0.12s;
+  }
+  .call-row:hover { background: #fafafa; }
+  .call-row.active { background: #faf5ff; border-left-color: #5b21b6; }
+  .call-id { font-size: 11px; color: #bbb; margin-right: 14px; font-family: 'DM Mono', monospace; }
+  .failure-name { font-size: 12px; color: #333; font-style: italic; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    border-radius: 2px;
+    font-family: 'DM Mono', monospace;
+  }
+  .HIGH   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+  .MEDIUM { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+  .LOW    { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+  .NONE   { background: #f9fafb; color: #9ca3af; border: 1px solid #e5e7eb; }
+
+  .detail { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+
+  .field-label { font-size: 9px; color: #aaa; letter-spacing: 0.15em; margin-bottom: 8px; font-family: 'DM Mono', monospace; }
+  .failure-heading {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a1a;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .reason-text { font-size: 13px; color: #555; line-height: 1.8; font-style: italic; }
+
+  .diff-bad {
+    background: #fff5f5;
+    border: 1px solid #fecaca;
+    border-left: 3px solid #dc2626;
+    padding: 14px 16px;
+  }
+  .diff-good {
+    background: #f5f3ff;
+    border: 1px solid #ddd6fe;
+    border-left: 3px solid #5b21b6;
+    padding: 14px 16px;
+  }
+  .diff-bad p  { font-size: 13px; color: #dc2626; line-height: 1.8; font-style: italic; }
+  .diff-good p { font-size: 13px; color: #5b21b6; line-height: 1.8; }
+
+  .diff-label-bad  { font-size: 10px; color: #dc2626; letter-spacing: 0.1em; margin-bottom: 8px; font-family: 'DM Mono', monospace; }
+  .diff-label-good { font-size: 10px; color: #5b21b6; letter-spacing: 0.1em; margin-bottom: 8px; font-family: 'DM Mono', monospace; }
+
+  .summary {
+    border-top: 1px solid #e5e5e5;
+    padding: 18px 22px;
+    background: #fafafa;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .sum-label { font-size: 9px; color: #bbb; letter-spacing: 0.15em; margin-bottom: 10px; font-family: 'DM Mono', monospace; }
+  .sum-item { font-size: 12px; color: #555; margin-bottom: 6px; display: flex; gap: 8px; font-style: italic; }
+  .sum-item .dot { color: #dc2626; font-style: normal; font-family: 'DM Mono', monospace; }
+  .sum-fix { font-size: 12px; color: #5b21b6; margin-bottom: 6px; display: flex; gap: 8px; font-style: italic; }
+  .sum-fix .arr { font-style: normal; font-family: 'DM Mono', monospace; }
+
+  @keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .fade-up { animation: fadeUp 0.25s ease both; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  .pulsing { animation: pulse 1.4s infinite; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo"> <span></span> CALL AUDIT</div>
+    <div class="logo-sub">FAILURE DETECTION + PROMPT FIX ENGINE</div>
+  </div>
+  <div class="version">v1.0 &middot; FORWARD DEPLOYED</div>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT: INPUT -->
+  <div class="panel-left">
+    <div class="top-row">
+      <div>
+        <div class="panel-label">INPUT</div>
+        <div class="panel-title">Paste call transcripts</div>
+      </div>
+      <button class="btn-sample" onclick="loadSample()">LOAD SAMPLE (5 CALLS)</button>
+    </div>
+
+    <textarea id="transcripts" placeholder="--- CALL 1 ---&#10;Agent: Hello, how can I help?&#10;User: I need...&#10;&#10;--- CALL 2 ---&#10;..."></textarea>
+
+    <div class="action-row">
+      <button class="btn-analyze" id="analyzeBtn" onclick="analyze()">ANALYZE CALLS</button>
+      <span class="status" id="status"></span>
+    </div>
+  </div>
+
+  <!-- RIGHT: RESULTS -->
+  <div class="panel-right" id="results">
+    <div class="call-list">
+      <div class="list-header" id="listHeader">CALLS</div>
+      <div id="callList"></div>
+    </div>
+    <div class="detail" id="detail"></div>
+    <div class="summary" id="summary"></div>
+  </div>
+
+</div>
+
+<script>
+const SAMPLE = `--- CALL 1 ---
+Agent: Hello! Thanks for calling. How can I help you today?
+User: Hi, I want to know if I can get a loan approved by tomorrow.
+Agent: Yes, absolutely! We can get that done for you by tomorrow, no problem.
+User: Really? 100% guaranteed?
+Agent: Yes, guaranteed! Just fill out the form and you'll have it tomorrow.
+User: Great, I'll do it now.
+
+--- CALL 2 ---
+Agent: Welcome! What brings you in today?
+User: I'm trying to understand your pricing plans.
+Agent: Sure! So we have Plan A which is the basic tier and then Plan B which is the pro tier and Plan C which is enterprise and each has different features like storage and users and API calls and support levels.
+User: Wait, what was Plan B again?
+Agent: Plan B is pro tier with 50GB storage, 10 users, 10k API calls, and email support.
+User: And Plan A?
+Agent: Plan A is 10GB, 3 users, 1k API calls, basic support.
+User: I'm confused, can I speak to someone?
+
+--- CALL 3 ---
+Agent: Hi there! How can I assist you?
+User: I need to cancel my subscription.
+Agent: I understand. May I ask why you'd like to cancel?
+User: It's too expensive for me right now.
+Agent: I completely understand. We do have a paused subscription option where you keep your data and can resume anytime. Would that work for you?
+User: Oh, I didn't know that was an option. Yes, let's do that instead.
+Agent: Perfect! I've paused your subscription. You can resume anytime from your dashboard.
+
+--- CALL 4 ---
+Agent: Hello, how can I help?
+User: I applied for a job two weeks ago and haven't heard back.
+Agent: Let me check on that. What's your name?
+User: Sarah Johnson.
+Agent: Okay Sarah. Our team reviews applications. You should hear back.
+User: When though?
+Agent: Soon. We're reviewing applications.
+User: That's not helpful. When exactly?
+Agent: I don't have that information at this time.
+User: Fine, I'll apply somewhere else.
+
+--- CALL 5 ---
+Agent: Good morning! Welcome to support.
+User: My account got locked and I have an important meeting in 10 minutes.
+Agent: I'm sorry to hear that. I'll need to verify your identity first. Can you provide your registered email?
+User: Yes it's sarah@company.com
+Agent: Thank you. And your date of birth?
+User: January 15 1990.
+Agent: Great, and the last 4 digits of the phone on file?
+User: 4821. Please hurry, my meeting is soon.
+Agent: One more thing, can you tell me your security question answer?
+User: This is taking too long! I'm going to miss my meeting!`;
+
+let allCalls = [];
+
+function loadSample() {
+  document.getElementById('transcripts').value = SAMPLE;
+}
+
+async function analyze() {
+  const transcripts = document.getElementById('transcripts').value.trim();
+  if (!transcripts) return;
+
+  const btn = document.getElementById('analyzeBtn');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  status.className = 'status pulsing';
+  status.textContent = 'Running failure detection...';
+
+  try {
+    const res = await fetch('/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transcripts })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    renderResults(data);
+    status.textContent = '';
+    status.className = 'status';
+  } catch (e) {
+    status.className = 'status error';
+    status.textContent = 'Analysis failed. Try again.';
+  }
+  btn.disabled = false;
+}
+
+function renderResults(data) {
+  allCalls = data.calls;
+  document.getElementById('results').classList.add('visible', 'fade-up');
+  document.getElementById('listHeader').textContent = 'CALLS  ' + allCalls.length + ' ANALYZED';
+
+  const list = document.getElementById('callList');
+  list.innerHTML = allCalls.map((c, i) => `
+    <div class="call-row ${i===0?'active':''}" id="row-${i}" onclick="selectCall(${i})">
+      <div style="display:flex;align-items:center;">
+        <span class="call-id">${c.id}</span>
+        <span class="failure-name">${c.failure_type}</span>
+      </div>
+      <span class="badge ${c.severity}">${c.severity}</span>
+    </div>
+  `).join('');
+
+  selectCall(0);
+  renderSummary(data.summary);
+}
+
+function selectCall(i) {
+  document.querySelectorAll('.call-row').forEach(r => r.classList.remove('active'));
+  document.getElementById('row-' + i).classList.add('active');
+  const c = allCalls[i];
+  document.getElementById('detail').innerHTML = `
+    <div class="fade-up">
+      <div class="field-label">FAILURE</div>
+      <div class="failure-heading">${c.failure_type} <span class="badge ${c.severity}">${c.severity}</span></div>
+    </div>
+    <div class="fade-up" style="animation-delay:0.05s">
+      <div class="field-label">REASON</div>
+      <div class="reason-text">${c.reason}</div>
+    </div>
+    <div class="fade-up" style="animation-delay:0.1s">
+      <div class="diff-label-bad">WHAT THE AGENT SAID</div>
+      <div class="diff-bad"><p>"${c.bad_response}"</p></div>
+    </div>
+    <div class="fade-up" style="animation-delay:0.15s">
+      <div class="diff-label-good">DEPLOY THIS INSTEAD</div>
+      <div class="diff-good"><p>"${c.improved_response}"</p></div>
+    </div>
+  `;
+}
+
+function renderSummary(s) {
+  document.getElementById('summary').innerHTML = `
+    <div>
+      <div class="sum-label">TOP FAILURES</div>
+      ${s.top_failures.map((f,i) => `<div class="sum-item"><span class="dot">${i+1}.</span>${f}</div>`).join('')}
+    </div>
+    <div>
+      <div class="sum-label">TOP FIXES TO DEPLOY</div>
+      ${s.top_fixes.map(f => `<div class="sum-fix"><span class="arr">-></span>${f}</div>`).join('')}
+    </div>
+  `;
+}
+</script>
+</body>
+</html>
